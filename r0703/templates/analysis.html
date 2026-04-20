@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}数据分析{% endblock %}
+{% block content %}
+<h2 style="color:#b35a0a;">数据分析（情感分析 + 主题挖掘）</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div class="card"><div id="chart1" style="height:280px;"></div></div>
+    <div class="card"><div id="chart2" style="height:280px;"></div></div>
+    <div class="card"><div id="chart3" style="height:280px;"></div></div>
+    <div class="card"><div id="chart4" style="height:280px;"></div></div>
+    <div class="card"><div id="chart5" style="height:280px;"></div></div>
+    <div class="card"><div id="chart6" style="height:280px;"></div></div>
+    <div class="card"><div id="chart7" style="height:280px;"></div></div>
+    <div class="card"><div id="chart8" style="height:280px;"></div></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+var p = {{ payload|tojson }};
+var orange = "#f58b2a";
+function pair(labels, values){
+    return labels.map(function(n, i){ return {name:n, value:values[i]}; });
+}
+var c1 = echarts.init(document.getElementById("chart1"));
+c1.setOption({
+    title:{text:"评分分布（柱状）",left:"center",textStyle:{fontSize:14,color:"#8a4b10"}},
+    tooltip:{},
+    xAxis:{type:"category",data:p.rating_labels},
+    yAxis:{type:"value"},
+    series:[{type:"bar",data:p.rating_values,itemStyle:{color:orange}}]
+});
+var c2 = echarts.init(document.getElementById("chart2"));
+c2.setOption({
+    title:{text:"季节占比（环形）",left:"center",textStyle:{fontSize:14,color:"#8a4b10"}},
+    tooltip:{trigger:"item"},
+    series:[{type:"pie",radius:["38%","65%"],data:pair(p.season_labels,p.season_values)}]
+});
+var c3 = echarts.init(document.getElementById("chart3"));
+c3.setOption({
+    title:{text:"月度评论趋势（折线）",left:"center",textStyle:{fontSize:14,color:"#8a4b10"}},
+    tooltip:{trigger:"axis"},
+    xAxis:{type:"category",data:p.month_labels},
+    yAxis:{type:"value"},
+    series:[{type:"line",smooth:true,data:p.month_values,lineStyle:{color:orange},areaStyle:{color:"rgba(245,139,42,0.2)"}}]
+});
+var c4 = echarts.init(document.getElementById("chart4"));
+c4.setOption({
+    title:{text:"情感分析（玫瑰图）",left:"center",textStyle:{fontSize:14,color:"#8a4b10"}},
+    tooltip:{trigger:"item"},
+    series:[{type:"pie",roseType:"radius",radius:"65%",data:pair(p.sentiment_labels,p.sentiment_values)}]
+});
+var c5 = echarts.init(document.getElementById("chart5"));
+c5.setOption({
+    title:{text:"主题挖掘（漏斗）",left:"center",textStyle:{fontSize:14,color:"#8a4b10"}},
+    tooltip:{trigger:"item"},
+    series:[{type:"funnel",left:"12%",top:35,bottom:10,width:"76%",data:pair(p.topic_labels,p.topic_values)}]
+});
+var c6 = echarts.init(document.getElementById("chart6"));
+c6.setOption({
+    title:{text:"季节体验雷达",left:"center",textStyle:{fontSize:14,color:"#8a4b10"}},
+    tooltip:{},
+    radar:{
+      indicator:p.radar_metric_labels.map(function(n){return {name:n,max:10};})
+    },
+    series:[{type:"radar",data:[{value:p.radar_metric_values,name:"综合指数"}],areaStyle:{color:"rgba(245,139,42,0.2)"}}]
+});
+var c7 = echarts.init(document.getElementById("chart7"));
+c7.setOption({
+    title:{text:"花费-有用票散点",left:"center",textStyle:{fontSize:14,color:"#8a4b10"}},
+    tooltip:{},
+    xAxis:{type:"value",name:"人均花费"},
+    yAxis:{type:"value",name:"有用票"},
+    series:[{type:"scatter",data:p.scatter_points,symbolSize:8,itemStyle:{color:"#d96f0e"}}]
+});
+var c8 = echarts.init(document.getElementById("chart8"));
+c8.setOption({
+    title:{text:"Top城市（横向条形）",left:"center",textStyle:{fontSize:14,color:"#8a4b10"}},
+    tooltip:{trigger:"axis",axisPointer:{type:"shadow"}},
+    xAxis:{type:"value"},
+    yAxis:{type:"category",data:p.city_labels},
+    series:[{type:"bar",data:p.city_values,itemStyle:{color:"#f0a560"}}]
+});
+</script>
+{% endblock %}

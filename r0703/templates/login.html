@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}登录{% endblock %}
+{% block extra_css %}
+<style>
+    .login-wrap {
+        width: 420px;
+        max-width: calc(100vw - 30px);
+        border-radius: 14px;
+        padding: 26px 24px;
+        background: rgba(255, 255, 255, 0.76);
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.22);
+    }
+    .login-title {
+        margin: 0 0 6px 0;
+        color: #9b4f08;
+        font-size: 26px;
+        font-weight: 700;
+        text-align: center;
+    }
+    .login-sub {
+        margin: 0 0 18px 0;
+        color: #6f4d2d;
+        font-size: 13px;
+        line-height: 1.6;
+        text-align: center;
+    }
+    .login-label {
+        display: block;
+        margin-bottom: 6px;
+        color: #7f4a1b;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    .login-input {
+        width: 100%;
+        border: 1px solid #eac39b;
+        border-radius: 10px;
+        padding: 11px 12px;
+        box-sizing: border-box;
+        background: rgba(255, 255, 255, 0.9);
+        outline: none;
+        transition: all 0.2s ease;
+    }
+    .login-input:focus {
+        border-color: #f58b2a;
+        box-shadow: 0 0 0 3px rgba(245, 139, 42, 0.18);
+    }
+    .login-btn {
+        margin-top: 8px;
+        width: 100%;
+        border: none;
+        border-radius: 10px;
+        padding: 11px 0;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 700;
+        background: linear-gradient(90deg, #f58b2a 0%, #e07013 100%);
+        cursor: pointer;
+    }
+    .login-btn:hover {
+        filter: brightness(1.03);
+    }
+</style>
+{% endblock %}
+{% block auth_content %}
+<div class="login-wrap">
+    <h2 class="login-title">系统登录</h2>
+    <p class="login-sub">大数据背景下旅游评论挖掘及景区推荐研究——以去哪儿为例</p>
+    <form method="post">
+        <div style="margin-bottom:12px;">
+            <label class="login-label">账号</label>
+            <input class="login-input" name="username" value="admin" required>
+        </div>
+        <div style="margin-bottom:14px;">
+            <label class="login-label">密码</label>
+            <input class="login-input" name="password" value="admin" required>
+        </div>
+        <button class="login-btn" type="submit">登录</button>
+    </form>
+</div>
+{% endblock %}

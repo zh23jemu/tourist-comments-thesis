@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}旅游评论挖掘系统{% endblock %}</title>
+    <script src="{{ url_for('static', filename='framework/jquery-1.11.3.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='new/tailwindcss.js') }}"></script>
+    <script src="{{ url_for('static', filename='new/echarts.min.js') }}"></script>
+    <link href="{{ url_for('static', filename='new/font-awesome.min.css') }}" rel="stylesheet">
+    <script src="{{ url_for('static', filename='new/layer.js') }}"></script>
+    <style>
+        :root {
+            --main: #f58b2a;
+            --main-dark: #d96f0e;
+            --bg: #ffffff;
+            --panel: #fff7ef;
+            --text: #2c2c2c;
+            --line: #f3d9bf;
+        }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        .navbar {
+            background: var(--main);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        .navbar a {
+            color: #fff;
+            text-decoration: none;
+            padding: 8px 10px;
+            border-radius: 6px;
+        }
+        .navbar a:hover,
+        .navbar a.active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 16px;
+        }
+        .btn-main {
+            background: var(--main);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        .btn-main:hover {
+            background: var(--main-dark);
+        }
+        .input {
+            width: 100%;
+            border: 1px solid #e8c8a7;
+            border-radius: 8px;
+            padding: 8px 10px;
+            box-sizing: border-box;
+            background: #fff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+        th, td {
+            border-bottom: 1px solid #f0e0d0;
+            padding: 10px 8px;
+            text-align: left;
+            font-size: 14px;
+        }
+        th {
+            background: #fff3e6;
+            color: #8a4b10;
+        }
+        .page-btn {
+            display: inline-block;
+            padding: 6px 10px;
+            margin: 0 2px;
+            border: 1px solid #efc79d;
+            border-radius: 6px;
+            color: #8a4b10;
+            text-decoration: none;
+            background: #fff;
+        }
+        .page-btn.active {
+            background: var(--main);
+            color: #fff;
+            border-color: var(--main);
+        }
+        .auth-bg {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("{{ url_for('static', filename='img/1.jpeg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+{% if 'username' in session %}
+    <header class="navbar">
+        <div style="max-width: 1200px; margin: 0 auto; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-weight: 700;">大数据旅游评论挖掘与推荐</div>
+            <nav style="display:flex; gap: 8px; flex-wrap: wrap;">
+                <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">仪表盘</a>
+                <a href="{{ url_for('analysis') }}" class="{% if request.endpoint == 'analysis' %}active{% endif %}">数据分析</a>
+                <a href="{{ url_for('recommend') }}" class="{% if request.endpoint == 'recommend' %}active{% endif %}">推荐页</a>
+                <a href="{{ url_for('reviews') }}" class="{% if request.endpoint == 'reviews' %}active{% endif %}">数据展示</a>
+                <a href="{{ url_for('profile') }}" class="{% if request.endpoint == 'profile' %}active{% endif %}">个人信息</a>
+                <a href="{{ url_for('logout') }}">退出</a>
+            </nav>
+        </div>
+    </header>
+    <main style="max-width: 1200px; margin: 20px auto; padding: 0 16px;">
+        {% block content %}{% endblock %}
+    </main>
+{% else %}
+    <main class="auth-bg">
+        {% block auth_content %}{% endblock %}
+    </main>
+{% endif %}
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<script>
+{% for msg in messages %}
+layer.msg("{{ msg }}");
+{% endfor %}
+</script>
+{% endif %}
+{% endwith %}
+{% block extra_js %}{% endblock %}
+</body>
+</html>

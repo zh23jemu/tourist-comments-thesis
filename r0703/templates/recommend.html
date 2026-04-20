@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}推荐页{% endblock %}
+{% block content %}
+<h2 style="color:#b35a0a;">景区推荐（随机森林 / 决策树 / 逻辑回归）</h2>
+<div class="card" style="margin-bottom:12px;">
+    <div style="color:#8a4b10;">
+        推荐分为模型预测“值得推荐”的概率；依据包含该景点在数据集中的统计：评论数、均评分、好评率、均花费、均有用票。
+    </div>
+</div>
+<div style="display:grid;grid-template-columns:1fr;gap:12px;">
+    <div class="card">
+        <h3 style="margin-top:0;color:#b35a0a;">随机森林推荐 Top5</h3>
+        <div style="margin:6px 0 10px;color:#8a4b10;">
+            指标：Acc {{ recs.metrics.rf.acc }} / P {{ recs.metrics.rf.precision }} / R {{ recs.metrics.rf.recall }} / F1 {{ recs.metrics.rf.f1 }}
+        </div>
+        <table>
+            <tr>
+                <th>景点</th><th>城市</th><th>类型</th><th>推荐分</th>
+                <th>评论数</th><th>均评分</th><th>好评率</th><th>均花费</th><th>均有用票</th>
+            </tr>
+            {% for r in recs.rows.rf %}
+            <tr>
+                <td>{{ r.spot_name }}</td><td>{{ r.city }}</td><td>{{ r.travel_type }}</td><td>{{ r.score }}</td>
+                <td>{{ r.review_cnt }}</td><td>{{ r.avg_rating }}</td><td>{{ r.pos_rate }}</td><td>{{ r.avg_cost }}</td><td>{{ r.avg_helpful }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    <div class="card">
+        <h3 style="margin-top:0;color:#b35a0a;">决策树推荐 Top5</h3>
+        <div style="margin:6px 0 10px;color:#8a4b10;">
+            指标：Acc {{ recs.metrics.dt.acc }} / P {{ recs.metrics.dt.precision }} / R {{ recs.metrics.dt.recall }} / F1 {{ recs.metrics.dt.f1 }}
+        </div>
+        <table>
+            <tr>
+                <th>景点</th><th>城市</th><th>类型</th><th>推荐分</th>
+                <th>评论数</th><th>均评分</th><th>好评率</th><th>均花费</th><th>均有用票</th>
+            </tr>
+            {% for r in recs.rows.dt %}
+            <tr>
+                <td>{{ r.spot_name }}</td><td>{{ r.city }}</td><td>{{ r.travel_type }}</td><td>{{ r.score }}</td>
+                <td>{{ r.review_cnt }}</td><td>{{ r.avg_rating }}</td><td>{{ r.pos_rate }}</td><td>{{ r.avg_cost }}</td><td>{{ r.avg_helpful }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    <div class="card">
+        <h3 style="margin-top:0;color:#b35a0a;">逻辑回归推荐 Top5</h3>
+        <div style="margin:6px 0 10px;color:#8a4b10;">
+            指标：Acc {{ recs.metrics.lr.acc }} / P {{ recs.metrics.lr.precision }} / R {{ recs.metrics.lr.recall }} / F1 {{ recs.metrics.lr.f1 }}
+        </div>
+        <table>
+            <tr>
+                <th>景点</th><th>城市</th><th>类型</th><th>推荐分</th>
+                <th>评论数</th><th>均评分</th><th>好评率</th><th>均花费</th><th>均有用票</th>
+            </tr>
+            {% for r in recs.rows.lr %}
+            <tr>
+                <td>{{ r.spot_name }}</td><td>{{ r.city }}</td><td>{{ r.travel_type }}</td><td>{{ r.score }}</td>
+                <td>{{ r.review_cnt }}</td><td>{{ r.avg_rating }}</td><td>{{ r.pos_rate }}</td><td>{{ r.avg_cost }}</td><td>{{ r.avg_helpful }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+{% endblock %}

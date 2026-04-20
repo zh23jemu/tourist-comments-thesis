@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}数据展示{% endblock %}
+{% block content %}
+<h2 style="color:#b35a0a;">数据展示</h2>
+<div class="card">
+    <table>
+        <tr>
+            <th>评论ID</th><th>景点</th><th>城市</th><th>省份</th><th>类型</th><th>季节</th><th>评分</th><th>天数</th><th>人均花费</th><th>复游</th><th>有用票</th>
+        </tr>
+        {% for row in rows %}
+        <tr>
+            <td>{{ row[0] }}</td><td>{{ row[1] }}</td><td>{{ row[2] }}</td><td>{{ row[3] }}</td><td>{{ row[4] }}</td><td>{{ row[5] }}</td>
+            <td>{{ row[6] }}</td><td>{{ row[7] }}</td><td>{{ row[8] }}</td><td>{{ row[9] }}</td><td>{{ row[10] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <div style="margin-top:12px; text-align:center;">
+        {% if page > 1 %}
+        <a class="page-btn" href="{{ url_for('reviews', page=page-1) }}">上一页</a>
+        {% endif %}
+        {% for p in pages %}
+            {% if p == '...' %}
+                <span style="padding:0 4px;">...</span>
+            {% elif p == page %}
+                <span class="page-btn active">{{ p }}</span>
+            {% else %}
+                <a class="page-btn" href="{{ url_for('reviews', page=p) }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+        {% if page < total_pages %}
+        <a class="page-btn" href="{{ url_for('reviews', page=page+1) }}">下一页</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

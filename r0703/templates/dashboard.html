@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}仪表盘{% endblock %}
+{% block content %}
+<h2 style="color:#b35a0a;">仪表盘</h2>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+    <div class="card"><div>评论总数</div><h3>{{ total }}</h3></div>
+    <div class="card"><div>景点数量</div><h3>{{ spots }}</h3></div>
+    <div class="card"><div>覆盖城市</div><h3>{{ cities }}</h3></div>
+    <div class="card"><div>平均评分</div><h3>{{ avg_rating }}</h3></div>
+</div>
+<div class="card" style="margin-top:14px;">
+    <h3 style="margin-top:0;color:#b35a0a;">热门景点评论量</h3>
+    <div id="topSpotChart" style="height:360px;"></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+var data = {{ top_spots|tojson }};
+var names = data.map(function(x){ return x[0]; });
+var values = data.map(function(x){ return x[1]; });
+var chart = echarts.init(document.getElementById("topSpotChart"));
+chart.setOption({
+    tooltip: {},
+    xAxis: { type: "category", data: names, axisLabel: { rotate: 30 } },
+    yAxis: { type: "value" },
+    series: [{ type: "bar", data: values, itemStyle: { color: "#f58b2a" } }]
+});
+</script>
+{% endblock %}

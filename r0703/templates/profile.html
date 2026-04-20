@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}个人信息{% endblock %}
+{% block content %}
+<h2 style="color:#b35a0a;">个人信息编辑</h2>
+<div class="card" style="max-width:700px;">
+    <form method="post">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+                <label>账号</label>
+                <input class="input" value="{{ user[0] }}" disabled>
+            </div>
+            <div>
+                <label>姓名</label>
+                <input class="input" name="full_name" value="{{ user[1] or '' }}">
+            </div>
+            <div>
+                <label>电话</label>
+                <input class="input" name="phone" value="{{ user[2] or '' }}">
+            </div>
+            <div>
+                <label>邮箱</label>
+                <input class="input" name="email" value="{{ user[3] or '' }}">
+            </div>
+        </div>
+        <div style="margin-top:12px;">
+            <label>简介</label>
+            <textarea class="input" name="bio" rows="4">{{ user[4] or '' }}</textarea>
+        </div>
+        <button class="btn-main" type="submit" style="margin-top:12px;">保存</button>
+    </form>
+</div>
+{% endblock %}
