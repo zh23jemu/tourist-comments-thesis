@@ -9,7 +9,7 @@ def main():
         password="root",
         charset="utf8mb4",
     )
-    with open("sql/init_db.sql", "r", encoding="utf-8") as f:
+    with open("sql/r0703.sql", "r", encoding="utf-8") as f:
         sql_content = f.read()
     try:
         with conn.cursor() as cur:
