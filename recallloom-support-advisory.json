@@ -1,0 +1,17 @@
+{
+  "latest_version": "0.3.5",
+  "minimum_mutating_version": "0.3.5",
+  "minimum_readonly_version": "0.3.5",
+  "advisory_level": "supported",
+  "release_channel": "stable",
+  "public_release_status": "released",
+  "reason_code": "current_release_supported",
+  "user_message": "This RecallLoom package version is currently supported.",
+  "support_advisory_url_status": "local_override",
+  "remote_parity_rule": "Using a local advisory override for this workspace session.",
+  "update_hints": {
+    "skills_cli": "Run npx skills update.",
+    "directory_install": "Replace the installed recallloom skill directory with the latest package copy.",
+    "native_wrappers": "After updating the package, rerun install_native_commands.py if you use native command wrappers."
+  }
+}
