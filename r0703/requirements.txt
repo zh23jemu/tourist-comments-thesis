@@ -3,3 +3,5 @@ pymysql
 scikit-learn
 pandas
 cryptography
+snownlp
+jieba

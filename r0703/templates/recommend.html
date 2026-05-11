@@ -1,13 +1,49 @@
 {% extends "base.html" %}
 {% block title %}推荐页{% endblock %}
 {% block content %}
-<h2 style="color:#b35a0a;">景区推荐（随机森林 / 决策树 / 逻辑回归）</h2>
+<h2 style="color:#b35a0a;">景区推荐（综合融合推荐 + 三模型对比）</h2>
 <div class="card" style="margin-bottom:12px;">
     <div style="color:#8a4b10;">
-        推荐分为模型预测“值得推荐”的概率；依据包含该景点在数据集中的统计：评论数、均评分、好评率、均花费、均有用票。
+        综合推荐分融合三模型预测概率与多维综合推荐指数；综合推荐指数由评分、推荐指数、复游率、好评率和有用票共同构成，并加入情感、主题和文本统计特征提升推荐解释性。
     </div>
 </div>
 <div style="display:grid;grid-template-columns:1fr;gap:12px;">
+    <div class="card">
+        <h3 style="margin-top:0;color:#b35a0a;">综合融合推荐 Top10</h3>
+        <table>
+            <tr>
+                <th>景点</th><th>城市</th><th>类型</th><th>综合推荐分</th><th>综合指数</th>
+                <th>评论数</th><th>均评分</th><th>情感均值</th><th>主题画像</th><th>推荐理由</th>
+            </tr>
+            {% for r in recs.rows.ensemble %}
+            <tr>
+                <td>{{ r.spot_name }}</td><td>{{ r.city }}</td><td>{{ r.travel_type }}</td><td>{{ r.score }}</td><td>{{ r.quality_score }}</td>
+                <td>{{ r.review_cnt }}</td><td>{{ r.avg_rating }}</td><td>{{ r.sentiment_mean }}</td><td>{{ r.dominant_topic }}</td><td>{{ r.reason }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    <div class="card">
+        <h3 style="margin-top:0;color:#b35a0a;">分场景群体推荐</h3>
+        <div style="display:grid;grid-template-columns:1fr;gap:12px;">
+            {% for scene in recs.scene_rows.values() %}
+            <div style="overflow-x:auto;">
+                <h4 style="margin:8px 0;color:#8a4b10;">{{ scene.title }}</h4>
+                <table>
+                    <tr>
+                        <th>景点</th><th>城市</th><th>综合分</th><th>情感均值</th><th>复游率</th><th>均花费</th><th>推荐理由</th>
+                    </tr>
+                    {% for r in scene.rows %}
+                    <tr>
+                        <td>{{ r.spot_name }}</td><td>{{ r.city }}</td><td>{{ r.score }}</td><td>{{ r.sentiment_mean }}</td>
+                        <td>{{ r.revisit_rate }}</td><td>{{ r.avg_cost }}</td><td>{{ r.reason }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
     <div class="card">
         <h3 style="margin-top:0;color:#b35a0a;">随机森林推荐 Top5</h3>
         <div style="margin:6px 0 10px;color:#8a4b10;">

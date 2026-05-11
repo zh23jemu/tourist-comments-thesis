@@ -31,3 +31,6 @@ env/
 Thumbs.db
 rl-support-cache/
 *.rar
+
+# DOCX 渲染质检临时输出
+.tmp_docx_render*/
