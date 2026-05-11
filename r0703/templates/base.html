@@ -104,6 +104,67 @@
             background-position: center;
             background-repeat: no-repeat;
         }
+        .page-loading-mask {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 247, 239, 0.92);
+            backdrop-filter: blur(2px);
+        }
+        .page-loading-mask.active {
+            display: flex;
+        }
+        .page-loading-panel {
+            width: min(420px, calc(100vw - 40px));
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 24px;
+            box-shadow: 0 12px 36px rgba(139, 80, 20, 0.18);
+        }
+        .page-loading-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #8a4b10;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .page-loading-spinner {
+            width: 22px;
+            height: 22px;
+            border: 3px solid #f6d8ba;
+            border-top-color: var(--main);
+            border-radius: 50%;
+            animation: loading-spin 0.9s linear infinite;
+            flex: 0 0 auto;
+        }
+        .page-loading-text {
+            margin-top: 12px;
+            color: #6f4c2b;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        .page-loading-track {
+            height: 8px;
+            margin-top: 16px;
+            overflow: hidden;
+            background: #fff0df;
+            border-radius: 999px;
+        }
+        .page-loading-bar {
+            width: 12%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--main), #ffd08a);
+            border-radius: 999px;
+            transition: width 0.5s ease;
+        }
+        @keyframes loading-spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -114,8 +175,8 @@
             <div style="font-weight: 700;">大数据旅游评论挖掘与推荐</div>
             <nav style="display:flex; gap: 8px; flex-wrap: wrap;">
                 <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">仪表盘</a>
-                <a href="{{ url_for('analysis') }}" class="{% if request.endpoint == 'analysis' %}active{% endif %}">数据分析</a>
-                <a href="{{ url_for('recommend') }}" class="{% if request.endpoint == 'recommend' %}active{% endif %}">推荐页</a>
+                <a href="{{ url_for('analysis') }}" data-loading-title="正在生成数据分析图表" data-loading-detail="系统正在读取评论数据，并进行 SnowNLP 情感分析、LDA 主题挖掘和统计图表计算。" class="{% if request.endpoint == 'analysis' %}active{% endif %}">数据分析</a>
+                <a href="{{ url_for('recommend') }}" data-loading-title="正在计算景区推荐结果" data-loading-detail="系统正在聚合景区特征，训练三类模型，并生成综合推荐与分场景推荐榜单。" class="{% if request.endpoint == 'recommend' %}active{% endif %}">推荐页</a>
                 <a href="{{ url_for('reviews') }}" class="{% if request.endpoint == 'reviews' %}active{% endif %}">数据展示</a>
                 <a href="{{ url_for('profile') }}" class="{% if request.endpoint == 'profile' %}active{% endif %}">个人信息</a>
                 <a href="{{ url_for('logout') }}">退出</a>
@@ -139,6 +200,71 @@ layer.msg("{{ msg }}");
 </script>
 {% endif %}
 {% endwith %}
+<div id="pageLoadingMask" class="page-loading-mask" aria-live="polite" aria-hidden="true">
+    <div class="page-loading-panel">
+        <div class="page-loading-title">
+            <span class="page-loading-spinner"></span>
+            <span id="pageLoadingTitle">正在加载页面</span>
+        </div>
+        <div id="pageLoadingText" class="page-loading-text">请稍候，系统正在处理数据。</div>
+        <div class="page-loading-track">
+            <div id="pageLoadingBar" class="page-loading-bar"></div>
+        </div>
+    </div>
+</div>
+<script>
+// 对耗时页面增加即时加载反馈。后端需要先完成分析/建模后才返回页面，
+// 因此这里使用前端模拟进度条，让用户明确知道系统正在计算而不是卡死。
+(function () {
+    var mask = document.getElementById("pageLoadingMask");
+    var title = document.getElementById("pageLoadingTitle");
+    var text = document.getElementById("pageLoadingText");
+    var bar = document.getElementById("pageLoadingBar");
+    var timer = null;
+
+    function showPageLoading(nextTitle, nextText) {
+        if (!mask || !title || !text || !bar) {
+            return;
+        }
+        title.textContent = nextTitle || "正在加载页面";
+        text.textContent = nextText || "请稍候，系统正在处理数据。";
+        bar.style.width = "12%";
+        mask.classList.add("active");
+        mask.setAttribute("aria-hidden", "false");
+
+        var progress = 12;
+        clearInterval(timer);
+        timer = setInterval(function () {
+            // 慢任务无法直接拿到服务端实时进度，这里让进度逐步接近 92%，
+            // 页面真正返回后浏览器会自动替换内容并结束加载状态。
+            if (progress < 70) {
+                progress += 8;
+            } else if (progress < 88) {
+                progress += 3;
+            } else if (progress < 92) {
+                progress += 1;
+            }
+            bar.style.width = progress + "%";
+        }, 600);
+    }
+
+    document.querySelectorAll("a[data-loading-title]").forEach(function (link) {
+        link.addEventListener("click", function (event) {
+            var href = link.getAttribute("href");
+            if (!href || href.charAt(0) === "#" || link.target === "_blank" || event.ctrlKey || event.metaKey || event.shiftKey) {
+                return;
+            }
+            showPageLoading(link.dataset.loadingTitle, link.dataset.loadingDetail);
+        });
+    });
+
+    document.querySelectorAll("form[data-loading-title]").forEach(function (form) {
+        form.addEventListener("submit", function () {
+            showPageLoading(form.dataset.loadingTitle, form.dataset.loadingDetail);
+        });
+    });
+})();
+</script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>
