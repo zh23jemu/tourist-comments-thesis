@@ -2,6 +2,13 @@
 {% block title %}数据分析{% endblock %}
 {% block content %}
 <h2 style="color:#b35a0a;">数据分析（情感分析 + 主题挖掘）</h2>
+<div class="card" style="margin-bottom:12px;color:#8a4b10;">
+    {% if payload.cache_status == "hit" %}
+    当前展示的是上一次生成的数据分析结果；系统检测到评论数据未变化，因此直接读取缓存以提升加载速度。
+    {% else %}
+    当前图表已根据最新评论数据重新生成；后续在数据不变时将自动复用本次分析结果。
+    {% endif %}
+</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
     <div class="card"><div id="chart1" style="height:280px;"></div></div>
     <div class="card"><div id="chart2" style="height:280px;"></div></div>

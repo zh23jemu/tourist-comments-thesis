@@ -1,7 +1,9 @@
 import math
+import json
 import random
 from collections import Counter, defaultdict
 from functools import lru_cache
+from pathlib import Path
 
 import jieba
 import pandas as pd
@@ -22,6 +24,9 @@ from snownlp import SnowNLP
 
 app = Flask(__name__)
 app.secret_key = "r0703-secret"
+
+ANALYSIS_LIMIT_ROWS = 6000
+ANALYSIS_CACHE_PATH = Path(__file__).resolve().parent / "cache" / "analysis_payload_cache.json"
 
 DB_CONFIG = {
     "host": "127.0.0.1",
@@ -266,6 +271,92 @@ def get_reviews_for_analysis(limit_rows=6000):
         """,
         (limit_rows,),
     )
+
+
+def get_analysis_data_signature(limit_rows=ANALYSIS_LIMIT_ROWS):
+    """生成分析页数据指纹，用于判断图表缓存是否仍然可复用。
+
+    分析页最耗时的部分是 SnowNLP 情感判断和 LDA 主题建模。如果每次访问都
+    重新处理最近几千条评论，用户会感觉页面长时间无响应。这里先对参与分析
+    的数据做一次轻量级摘要：统计行数、最大 id，并对关键字段计算 CRC32 校验
+    和。只要这些值没有变化，就认为分析数据没有变化，可以直接复用上一次
+    保存的图表 payload。
+    """
+    row = query_one(
+        """
+        SELECT COUNT(*) AS row_count,
+               COALESCE(MAX(id), 0) AS max_id,
+               COALESCE(SUM(CRC32(CONCAT_WS('|',
+                   id, spot_name, city, province, travel_type, season, travel_month,
+                   trip_days, cost_cny_per_person, is_revisit, rating, review_text,
+                   recommend_index_raw, helpful_votes
+               ))), 0) AS content_checksum
+        FROM (
+            SELECT id, spot_name, city, province, travel_type, season, travel_month,
+                   trip_days, cost_cny_per_person, is_revisit, rating, review_text,
+                   recommend_index_raw, helpful_votes
+            FROM travel_review
+            ORDER BY id DESC
+            LIMIT %s
+        ) AS recent_reviews
+        """,
+        (limit_rows,),
+    )
+    return {
+        "limit_rows": int(limit_rows),
+        "row_count": int(row[0] or 0),
+        "max_id": int(row[1] or 0),
+        # MySQL 的 SUM(CRC32(...)) 可能返回 Decimal，因此统一转成字符串保存，
+        # 避免不同驱动或平台上的 JSON 数字精度差异影响缓存命中。
+        "content_checksum": str(row[2] or 0),
+    }
+
+
+def load_analysis_payload_cache(signature):
+    """读取分析页缓存；签名一致才返回 payload，否则视为缓存失效。"""
+    try:
+        with ANALYSIS_CACHE_PATH.open("r", encoding="utf-8") as f:
+            cache_data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    if cache_data.get("signature") != signature:
+        return None
+    payload = cache_data.get("payload")
+    return payload if isinstance(payload, dict) else None
+
+
+def save_analysis_payload_cache(signature, payload):
+    """保存分析页图表数据，供后续请求和 Flask 重启后继续复用。"""
+    try:
+        ANALYSIS_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with ANALYSIS_CACHE_PATH.open("w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "signature": signature,
+                    "payload": payload,
+                },
+                f,
+                ensure_ascii=False,
+            )
+    except OSError:
+        # 缓存只影响速度，不影响页面正确性。写入失败时保持页面正常展示即可。
+        pass
+
+
+def get_cached_analysis_payload(limit_rows=ANALYSIS_LIMIT_ROWS):
+    """优先复用分析页缓存，数据变化时再重新生成图表数据。"""
+    signature = get_analysis_data_signature(limit_rows)
+    payload = load_analysis_payload_cache(signature)
+    if payload is not None:
+        payload["cache_status"] = "hit"
+        return payload
+
+    rows = get_reviews_for_analysis(limit_rows)
+    payload = build_analysis_payload(rows)
+    payload["cache_status"] = "miss"
+    save_analysis_payload_cache(signature, payload)
+    return payload
 
 
 def build_analysis_payload(rows):
@@ -803,8 +894,7 @@ def profile():
 def analysis():
     if not logged_in():
         return redirect(url_for("login"))
-    rows = get_reviews_for_analysis()
-    payload = build_analysis_payload(rows)
+    payload = get_cached_analysis_payload()
     return render_template("analysis.html", payload=payload)
 
 
