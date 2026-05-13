@@ -4,7 +4,7 @@
 <h2 style="color:#b35a0a;">景区推荐（综合融合推荐 + 三模型对比）</h2>
 <div class="card" style="margin-bottom:12px;">
     <div style="color:#8a4b10;">
-        综合推荐分融合三模型预测概率与多维综合推荐指数；综合推荐指数由评分、推荐指数、复游率、好评率和有用票共同构成，并加入情感、主题和文本统计特征提升推荐解释性。
+        综合推荐分融合三模型预测概率与多维综合推荐指数；分主题推荐基于 LDA 挖掘出的五个主题，并结合高权重词人工归纳为交通配套与打卡体验、景区特色与游览体验、历史文化体验、区位交通与到达便利、环境服务与休闲消费五类主题，将景区综合质量与主题占比结合排序，使主题挖掘结果直接服务于推荐输出。
     </div>
 </div>
 <div style="display:grid;grid-template-columns:1fr;gap:12px;">
@@ -24,19 +24,19 @@
         </table>
     </div>
     <div class="card">
-        <h3 style="margin-top:0;color:#b35a0a;">分场景群体推荐</h3>
+        <h3 style="margin-top:0;color:#b35a0a;">分主题景区推荐</h3>
         <div style="display:grid;grid-template-columns:1fr;gap:12px;">
-            {% for scene in recs.scene_rows.values() %}
+            {% for topic in recs.topic_rows.values() %}
             <div style="overflow-x:auto;">
-                <h4 style="margin:8px 0;color:#8a4b10;">{{ scene.title }}</h4>
+                <h4 style="margin:8px 0;color:#8a4b10;">{{ topic.title }}</h4>
                 <table>
                     <tr>
-                        <th>景点</th><th>城市</th><th>综合分</th><th>情感均值</th><th>复游率</th><th>均花费</th><th>推荐理由</th>
+                        <th>景点</th><th>城市</th><th>综合分</th><th>主题占比</th><th>情感均值</th><th>复游率</th><th>推荐理由</th>
                     </tr>
-                    {% for r in scene.rows %}
+                    {% for r in topic.rows %}
                     <tr>
-                        <td>{{ r.spot_name }}</td><td>{{ r.city }}</td><td>{{ r.score }}</td><td>{{ r.sentiment_mean }}</td>
-                        <td>{{ r.revisit_rate }}</td><td>{{ r.avg_cost }}</td><td>{{ r.reason }}</td>
+                        <td>{{ r.spot_name }}</td><td>{{ r.city }}</td><td>{{ r.score }}</td><td>{{ r.topic_share }}</td>
+                        <td>{{ r.sentiment_mean }}</td><td>{{ r.revisit_rate }}</td><td>{{ r.reason }}</td>
                     </tr>
                     {% endfor %}
                 </table>

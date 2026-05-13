@@ -27,6 +27,20 @@ app.secret_key = "r0703-secret"
 
 ANALYSIS_LIMIT_ROWS = 6000
 ANALYSIS_CACHE_PATH = Path(__file__).resolve().parent / "cache" / "analysis_payload_cache.json"
+LDA_TOPIC_COUNT = 5
+ANALYSIS_CACHE_VERSION = "lda-topic-count-5-short-labels"
+
+# LDA 模型本身只输出“主题编号 + 高权重词”，这些词需要结合旅游评论语境
+# 进行人工语义归纳，才能变成论文和系统页面中更容易理解的主题名称。
+# 这里保留固定的五类主题标签和代表性关键词：模型仍负责计算每条评论
+# 在 5 个主题上的分布，页面展示时再用该映射提升解释性和论文口径一致性。
+LDA_TOPIC_LABELS = [
+    {"label": "交通配套与打卡体验类", "keywords": ["周边", "配套", "公交", "换乘", "打卡", "夜景", "拍照"]},
+    {"label": "景区特色与游览体验类", "keywords": ["特色", "本身", "预期", "氛围", "拍照", "自驾", "停车"]},
+    {"label": "历史文化体验类", "keywords": ["文化", "历史", "气息", "地铁", "打车", "朋友", "情侣"]},
+    {"label": "区位交通与到达便利类", "keywords": ["位于", "公里", "自驾", "停车", "地铁", "公交"]},
+    {"label": "环境服务与休闲消费类", "keywords": ["环境", "干净", "打车", "夜景", "周末", "氛围"]},
+]
 
 DB_CONFIG = {
     "host": "127.0.0.1",
@@ -168,12 +182,42 @@ def tokenize_for_lda(text):
     return " ".join(words)
 
 
-def build_lda_topics(review_items, topic_count=6):
+def build_topic_short_name(topic_idx):
+    """生成适合图表标签展示的 LDA 主题短名称。
+
+    参数：
+        topic_idx: LDA 模型中的主题下标，从 0 开始。
+
+    返回：
+        形如“主题1：交通配套与打卡体验类”的短标签。漏斗图空间较窄，
+        不适合直接展示全部关键词，因此图表使用短标签，关键词保留在
+        页面说明、论文正文和推荐解释中。
+    """
+    if 0 <= topic_idx < len(LDA_TOPIC_LABELS):
+        topic = LDA_TOPIC_LABELS[topic_idx]
+        return f"主题{topic_idx + 1}：{topic['label']}"
+    return f"主题{topic_idx + 1}"
+
+
+def build_topic_display_name(topic_idx):
+    """生成包含关键词证据的 LDA 主题完整名称。
+
+    推荐页标题和推荐理由需要展示主题类别背后的关键词依据，因此继续保留
+    “主题N：主题类别（关键词：...）”这种完整写法。
+    """
+    if 0 <= topic_idx < len(LDA_TOPIC_LABELS):
+        topic = LDA_TOPIC_LABELS[topic_idx]
+        keywords = "/".join(topic["keywords"])
+        return f"{build_topic_short_name(topic_idx)}（关键词：{keywords}）"
+    return build_topic_short_name(topic_idx)
+
+
+def build_lda_topics(review_items, topic_count=LDA_TOPIC_COUNT):
     """基于评论文本训练 LDA 主题模型，并统计每个主题覆盖的评论数量。
 
     入参保留原始行索引，是为了在数据量不足、有效文本过少或模型训练失败时，
-    仍能返回稳定的主题字段给前端图表。主题名称由每个主题权重最高的 3 个词拼接
-    而成，展示时既有“主题N”的编号，也有关键词解释，方便论文和系统演示说明。
+    仍能返回稳定的主题字段给前端图表。LDA 负责计算评论的主题归属，展示层面
+    再通过人工归纳标签和代表性关键词解释每个主题，方便论文和系统演示说明。
     """
     if not review_items:
         return Counter({"主题不足": 0})
@@ -207,9 +251,7 @@ def build_lda_topics(review_items, topic_count=6):
 
     topic_names = {}
     for topic_idx, weights in enumerate(lda.components_):
-        top_word_indexes = weights.argsort()[-3:][::-1]
-        top_words = [feature_names[i] for i in top_word_indexes]
-        topic_names[topic_idx] = f"主题{topic_idx + 1}：" + "/".join(top_words)
+        topic_names[topic_idx] = build_topic_short_name(topic_idx)
 
     topic_counter = Counter()
     for distribution in topic_distribution:
@@ -219,25 +261,25 @@ def build_lda_topics(review_items, topic_count=6):
     return topic_counter
 
 
-def build_lda_review_distributions(review_texts, topic_count=6):
+def build_lda_review_distributions(review_texts, topic_count=LDA_TOPIC_COUNT):
     """为每条评论生成 LDA 主题分布向量。
 
     分析页只需要统计主题数量，而推荐模型需要把主题作为特征输入。因此这里返回
-    每条评论在 6 个潜在主题上的概率分布，同时返回主题关键词名称，后续可按景区
+    每条评论在 5 个潜在主题上的概率分布，同时返回主题关键词名称，后续可按景区
     聚合为“这个景区更偏向哪类体验”的主题画像。
     """
     empty = [[0.0] * topic_count for _ in review_texts]
     documents = [tokenize_for_lda(text) for text in review_texts]
     valid_pairs = [(idx, doc) for idx, doc in enumerate(documents) if doc]
     if len(valid_pairs) < topic_count:
-        return empty, [f"主题{i + 1}" for i in range(topic_count)]
+        return empty, [build_topic_display_name(i) for i in range(topic_count)]
 
     try:
         vectorizer = CountVectorizer(max_features=1200, min_df=3, max_df=0.85, token_pattern=r"(?u)\b\w+\b")
         valid_docs = [doc for _, doc in valid_pairs]
         term_matrix = vectorizer.fit_transform(valid_docs)
         if term_matrix.shape[1] < topic_count:
-            return empty, [f"主题{i + 1}" for i in range(topic_count)]
+            return empty, [build_topic_display_name(i) for i in range(topic_count)]
         lda = LatentDirichletAllocation(
             n_components=topic_count,
             random_state=42,
@@ -246,13 +288,11 @@ def build_lda_review_distributions(review_texts, topic_count=6):
         valid_distributions = lda.fit_transform(term_matrix)
         feature_names = vectorizer.get_feature_names_out()
     except Exception:
-        return empty, [f"主题{i + 1}" for i in range(topic_count)]
+        return empty, [build_topic_display_name(i) for i in range(topic_count)]
 
     topic_names = []
     for topic_idx, weights in enumerate(lda.components_):
-        top_word_indexes = weights.argsort()[-3:][::-1]
-        top_words = [feature_names[i] for i in top_word_indexes]
-        topic_names.append(f"主题{topic_idx + 1}：" + "/".join(top_words))
+        topic_names.append(build_topic_display_name(topic_idx))
 
     distributions = [[0.0] * topic_count for _ in review_texts]
     for local_idx, (raw_idx, _) in enumerate(valid_pairs):
@@ -304,6 +344,7 @@ def get_analysis_data_signature(limit_rows=ANALYSIS_LIMIT_ROWS):
     )
     return {
         "limit_rows": int(limit_rows),
+        "cache_version": ANALYSIS_CACHE_VERSION,
         "row_count": int(row[0] or 0),
         "max_id": int(row[1] or 0),
         # MySQL 的 SUM(CRC32(...)) 可能返回 Decimal，因此统一转成字符串保存，
@@ -492,7 +533,7 @@ def top_counter_value(counter, default=""):
     return counter.most_common(1)[0][0] if counter else default
 
 
-def build_spot_feature_dataset(rows, topic_count=6):
+def build_spot_feature_dataset(rows, topic_count=LDA_TOPIC_COUNT):
     """把评论级数据聚合为景区级建模数据。
 
     修改意见强调“群体性推荐”的本质是对景区质量进行排序，因此这里不再把每条
@@ -588,14 +629,6 @@ def build_spot_feature_dataset(rows, topic_count=6):
             + 0.15 * avg_helpful_norm
         )
 
-        family_score = (
-            sum(1 for item in items if "亲子" in item["travel_type"] or "家人" in item["travel_type"]) / review_cnt
-            + sum(token_counter.get(word, 0) for word in ["亲子", "孩子", "家人", "乐园", "动物园"]) / max(sum(token_counter.values()), 1)
-        )
-        culture_score = sum(token_counter.get(word, 0) for word in ["文化", "历史", "博物馆", "古城", "寺庙", "遗址"]) / max(sum(token_counter.values()), 1)
-        short_trip_score = sum(1 for item in items if item["trip_days"] <= 2) / review_cnt
-        photo_score = sum(token_counter.get(word, 0) for word in ["拍照", "打卡", "出片", "夜景", "风光", "风景"]) / max(sum(token_counter.values()), 1)
-
         feature = {
             "spot_name": spot_name,
             "city": top_counter_value(Counter(item["city"] for item in items)),
@@ -618,10 +651,6 @@ def build_spot_feature_dataset(rows, topic_count=6):
             "avg_text_len": sum(item["text_len"] for item in items) / review_cnt,
             "high_freq_coverage": sum(count for _, count in token_counter.most_common(10)) / max(sum(token_counter.values()), 1),
             "text_entropy": normalized_entropy(token_counter),
-            "family_score": family_score,
-            "culture_score": culture_score,
-            "short_trip_score": short_trip_score,
-            "photo_score": photo_score,
         }
         for topic_idx, value in enumerate(topic_values):
             feature[f"topic_{topic_idx + 1}"] = value
@@ -650,9 +679,19 @@ def positive_probability(pipe, rows):
     return [float(row[idx]) for row in probs]
 
 
-def build_recommend_reason(item):
-    """根据景区画像生成自然语言推荐理由，提升推荐结果可解释性。"""
+def build_recommend_reason(item, focus_topic=None, topic_share=None):
+    """根据景区画像生成自然语言推荐理由，提升推荐结果可解释性。
+
+    当推荐列表来自某个 LDA 主题时，额外把“主题关键词”和“主题占比”写入
+    推荐理由，使推荐页能够直接承接前面主题挖掘页面的结果，而不是另起一套
+    人工场景分类标准。
+    """
     reasons = []
+    if focus_topic:
+        if topic_share is None:
+            reasons.append(f"评论内容与“{focus_topic}”主题匹配度较高")
+        else:
+            reasons.append(f"评论内容与“{focus_topic}”主题匹配度较高，占比约{topic_share:.0%}")
     if item["sentiment_mean"] >= 0.8:
         reasons.append("游客文本情感评价较高")
     if item["revisit_rate"] >= 0.7:
@@ -669,10 +708,13 @@ def build_recommend_reason(item):
     return "；".join(reasons) + "。"
 
 
-def merge_view_rows(rows, metadata):
+def merge_view_rows(rows, metadata, topic_idx=None, topic_name=None):
     view_rows = []
     for spot_name, score in rows:
         item = metadata[spot_name]
+        topic_share = None
+        if topic_idx is not None:
+            topic_share = float(item.get(f"topic_{topic_idx + 1}", 0))
         view_rows.append(
             {
                 "spot_name": spot_name,
@@ -689,29 +731,35 @@ def merge_view_rows(rows, metadata):
                 "sentiment_mean": round(item["sentiment_mean"], 4),
                 "negative_rate": round(item["negative_rate"], 4),
                 "dominant_topic": item["dominant_topic"],
-                "reason": build_recommend_reason(item),
+                "topic_share": round(topic_share, 4) if topic_share is not None else "",
+                "reason": build_recommend_reason(item, topic_name, topic_share),
             }
         )
     return view_rows
 
 
-def build_scene_recommendations(scored_rows, metadata, limit=20):
-    """输出不依赖用户历史行为的分场景群体推荐榜单。"""
-    scene_rules = {
-        "family": ("适合亲子游 Top20", lambda item: item["family_score"] * 0.35 + item["score"] * 0.45 + (1 - min(abs(item["trip_days"] - 2) / 5, 1)) * 0.20),
-        "culture": ("文化深度游 Top20", lambda item: item["culture_score"] * 0.35 + item["score"] * 0.45 + item["revisit_rate"] * 0.20),
-        "short_trip": ("高性价比短途游 Top20", lambda item: item["short_trip_score"] * 0.35 + item["score"] * 0.35 + (1 - min(item["avg_cost"] / 1500, 1)) * 0.30),
-        "photo": ("摄影打卡 Top20", lambda item: item["photo_score"] * 0.35 + item["score"] * 0.40 + item["sentiment_mean"] * 0.25),
-    }
-    scene_rows = {}
-    for key, (title, scorer) in scene_rules.items():
+def build_topic_recommendations(scored_rows, metadata, topic_names, limit=20):
+    """按 LDA 主题生成群体推荐榜单。
+
+    每个景区已经拥有综合融合推荐分、综合推荐指数和 5 维 LDA 主题占比。这里
+    对每个主题分别排序：既看景区总体质量，也看它是否真正符合该主题，从而让
+    “主题挖掘”结果直接服务于推荐输出。
+    """
+    topic_rows = {}
+    for topic_idx, topic_name in enumerate(topic_names):
         ranked = []
         for spot_name, score in scored_rows:
-            item = {**metadata[spot_name], "score": score, "avg_cost": metadata[spot_name]["cost_cny_per_person"]}
-            ranked.append((spot_name, scorer(item)))
+            item = metadata[spot_name]
+            topic_share = float(item.get(f"topic_{topic_idx + 1}", 0))
+            topic_score = 0.55 * score + 0.30 * topic_share + 0.15 * item["quality_score"]
+            ranked.append((spot_name, topic_score))
         ranked.sort(key=lambda x: x[1], reverse=True)
-        scene_rows[key] = {"title": title, "rows": merge_view_rows(ranked[:limit], metadata)}
-    return scene_rows
+        topic_rows[f"topic_{topic_idx + 1}"] = {
+            "title": f"{topic_name} 推荐 Top20",
+            "topic_name": topic_name,
+            "rows": merge_view_rows(ranked[:limit], metadata, topic_idx=topic_idx, topic_name=topic_name),
+        }
+    return topic_rows
 
 
 @lru_cache(maxsize=1)
@@ -724,7 +772,7 @@ def train_and_recommend():
             "dt": {"acc": 0, "precision": 0, "recall": 0, "f1": 0},
             "lr": {"acc": 0, "precision": 0, "recall": 0, "f1": 0},
         }
-        return {"rows": {"ensemble": [], "rf": [], "dt": [], "lr": []}, "scene_rows": {}, "metrics": empty_metrics}
+        return {"rows": {"ensemble": [], "rf": [], "dt": [], "lr": []}, "topic_rows": {}, "metrics": empty_metrics}
 
     sample = pd.DataFrame(features)
     spot_names = sample["spot_name"].tolist()
@@ -735,8 +783,7 @@ def train_and_recommend():
         "travel_month", "trip_days", "cost_cny_per_person", "is_revisit", "helpful_votes",
         "review_cnt", "avg_rating", "pos_rate", "revisit_rate", "recommend_index",
         "sentiment_mean", "sentiment_var", "negative_rate", "avg_text_len",
-        "high_freq_coverage", "text_entropy", "family_score", "culture_score",
-        "short_trip_score", "photo_score",
+        "high_freq_coverage", "text_entropy",
     ] + [f"topic_{idx + 1}" for idx in range(len(topic_names))]
     cat_cols = ["city", "province", "travel_type", "season"]
 
@@ -795,10 +842,10 @@ def train_and_recommend():
     result["ensemble"] = ensemble_rows[:10]
 
     view_rows = {key: merge_view_rows(rows, metadata) for key, rows in result.items()}
-    scene_rows = build_scene_recommendations(ensemble_rows, metadata, limit=20)
+    topic_rows = build_topic_recommendations(ensemble_rows, metadata, topic_names, limit=20)
     return {
         "rows": view_rows,
-        "scene_rows": scene_rows,
+        "topic_rows": topic_rows,
         "metrics": metrics,
         "topic_names": topic_names,
     }

@@ -8,6 +8,9 @@
     {% else %}
     当前图表已根据最新评论数据重新生成；后续在数据不变时将自动复用本次分析结果。
     {% endif %}
+    <div style="margin-top:6px;">
+        主题挖掘基于 jieba 分词和 LDA 模型生成五个潜在主题，并结合高权重词进行人工语义归纳，形成交通配套与打卡体验、景区特色与游览体验、历史文化体验、区位交通与到达便利、环境服务与休闲消费五类主题。
+    </div>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
     <div class="card"><div id="chart1" style="height:280px;"></div></div>
